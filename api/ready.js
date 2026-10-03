@@ -81,7 +81,10 @@ export default async function handler(req, res) {
     return res.status(502).json({ error: 'Model call failed.' + e.message });
   }
 
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+  let text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+  text = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+  const s = text.indexOf('{'), e = text.lastIndexOf('}');
+  if (s !== -1 && e !== -1) text = text.slice(s, e + 1);
   const usage = data?.usageMetadata || {};
     if (!data?.candidates) return res.status(200).json({ error: 'Gemini returned no candidates', raw: data });
   let parsed;
