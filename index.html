@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rung — Am I ready for this job?</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Sora:wght@600;800&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg:#0a0a0f; --card:#13131c; --line:#23232e; --ink:#f4f4f6; --mut:#9a9aae; --acc:#7c5cff; --acc2:#13d8a4; }
+    body { background: radial-gradient(1200px 600px at 70% -10%, #1a1733 0%, transparent 60%), var(--bg); color: var(--ink); font-family:'Inter',system-ui,sans-serif; }
+    h1,h2,h3,.disp { font-family:'Sora','Inter',sans-serif; }
+    .glass { background: rgba(255,255,255,.03); border:1px solid var(--line); }
+    .grad { background:linear-gradient(100deg,var(--acc),var(--acc2)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+    .btn { background:linear-gradient(100deg,var(--acc),#9b7cff); box-shadow:0 8px 30px rgba(124,92,255,.35); }
+    .chip { border:1px solid var(--line); background:rgba(124,92,255,.08); }
+    input,textarea,select{ background:var(--card); border:1px solid var(--line); color:var(--ink); border-radius:.75rem; padding:.7rem .9rem; outline:none; width:100%; }
+    input:focus,textarea:focus,select:focus{ border-color:var(--acc); }
+  </style>
+</head>
+<body class="antialiased">
+  <header class="sticky top-0 z-30 glass backdrop-blur">
+    <div class="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-2 font-extrabold text-lg disp"><span class="inline-grid place-items-center w-8 h-8 rounded-lg btn text-white">R</span> Rung</div>
+      <a href="#try" class="btn text-white text-sm font-semibold px-4 py-2 rounded-lg">Try it live</a>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="max-w-5xl mx-auto px-5 pt-16 pb-8 text-center">
+    <span class="chip inline-block text-xs text-[var(--mut)] px-3 py-1 rounded-full mb-5">Live demo · powered by Gemini</span>
+    <h1 class="text-4xl md:text-5xl font-extrabold leading-tight">Am I ready for <span class="grad">this</span> job?</h1>
+    <p class="text-[var(--mut)] text-lg mt-5 max-w-2xl mx-auto">Paste the job description you're chasing. Rung returns your three biggest skill gaps and the exact short modules + proof artifact that close each one.</p>
+  </section>
+
+  <!-- Live read-back from Supabase -->
+  <section class="max-w-5xl mx-auto px-5">
+    <div class="glass rounded-2xl p-5 grid grid-cols-3 gap-3 text-center">
+      <div><div class="disp text-3xl font-extrabold grad" id="st-checks">…</div><div class="text-xs text-[var(--mut)] mt-1">readiness checks run</div></div>
+      <div><div class="disp text-3xl font-extrabold grad" id="st-week">…</div><div class="text-xs text-[var(--mut)] mt-1">checks this week</div></div>
+      <div><div class="disp text-3xl font-extrabold grad" id="st-roles">…</div><div class="text-xs text-[var(--mut)] mt-1">roles mapped</div></div>
+    </div>
+  </section>
+
+  <!-- The feature -->
+  <section id="try" class="max-w-5xl mx-auto px-5 py-10 grid md:grid-cols-2 gap-6">
+    <div class="glass rounded-2xl p-6">
+      <h2 class="font-extrabold text-xl mb-4">Your target role</h2>
+      <label class="text-sm text-[var(--mut)]">Paste the job description</label>
+      <textarea id="jd" rows="8" class="mt-1 mb-4" placeholder="e.g. Associate Consultant — problem structuring, Excel & SQL, client communication, ..."></textarea>
+      <label class="text-sm text-[var(--mut)]">Your background</label>
+      <select id="bg" class="mt-1 mb-4">
+        <option>Final-year student, no full-time experience</option>
+        <option>0–1 years experience</option>
+        <option>1–3 years experience</option>
+        <option>3–4 years, switching domains</option>
+      </select>
+      <button onclick="runCheck()" id="go" class="btn text-white font-semibold px-6 py-3 rounded-xl w-full">Find my 3 gaps</button>
+      <p class="text-xs text-[var(--mut)] mt-3">Capped at 3 checks/day per visitor · output capped at 350 tokens.</p>
+    </div>
+
+    <div class="glass rounded-2xl p-6">
+      <h2 class="font-extrabold text-xl mb-4">Your readiness report</h2>
+      <div id="out" class="text-[var(--mut)] text-sm">Your gaps will appear here.</div>
+    </div>
+  </section>
+
+  <!-- Live leaderboard -->
+  <section class="max-w-5xl mx-auto px-5 pb-16">
+    <h2 class="font-extrabold text-2xl mb-4">Most-demanded skills this week</h2>
+    <div id="lb" class="grid sm:grid-cols-2 gap-3 text-sm text-[var(--mut)]">Loading from Supabase…</div>
+  </section>
+
+  <footer class="border-t border-[var(--line)]"><div class="max-w-6xl mx-auto px-5 py-8 text-sm text-[var(--mut)]">© 2026 Rung · See the gap. Close the gap. Prove it.</div></footer>
+
+  <script>
+    // simple per-visitor id in localStorage (used for the cap; no personal data)
+    function vid(){ let v=localStorage.getItem('rung_vid'); if(!v){ v='v_'+Math.random().toString(36).slice(2); localStorage.setItem('rung_vid',v);} return v; }
+
+    async function loadStats(){
+      try{
+        const r=await fetch('/api/leaderboard'); const d=await r.json();
+        st_checks.textContent=d.total_checks ?? 0; st_week.textContent=d.checks_this_week ?? 0; st_roles.textContent=d.roles_mapped ?? 0;
+        lb.innerHTML = (d.leaderboard||[]).length
+          ? d.leaderboard.map(x=>`<div class="flex items-center justify-between glass rounded-xl px-4 py-3"><span>${x.skill}</span><span class="chip text-xs px-2 py-1 rounded-full">#${x.rank} · ${x.demand}</span></div>`).join('')
+          : '<div class="glass rounded-xl px-4 py-3">No data yet — run the first check above.</div>';
+      }catch(e){ lb.textContent='Could not load stats.'; }
+    }
+    loadStats();
+
+    async function runCheck(){
+      const jd=document.getElementById('jd').value.trim();
+      const out=document.getElementById('out'); const go=document.getElementById('go');
+      if(jd.length<40){ out.innerHTML='<span class="text-red-400">Paste a fuller job description (40+ characters).</span>'; return; }
+      go.disabled=true; go.textContent='Analysing…'; out.textContent='Thinking…';
+      try{
+        const r=await fetch('/api/ready',{method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({jobDescription:jd, background:document.getElementById('bg').value, visitorId:vid()})});
+        const d=await r.json();
+        if(r.status===429){ out.innerHTML=`<span class="text-amber-400">${d.error}</span>`; }
+        else if(d.refused){ out.innerHTML=`<div class="glass rounded-xl p-4"><b>Rung didn't run this.</b><br>${d.reason}</div>`; }
+        else if(d.gaps){
+          out.innerHTML=`<p class="text-[var(--ink)] mb-3">Target: <b>${d.target_role||'this role'}</b> — your top 3 gaps:</p>`+
+            d.gaps.map((g,i)=>`<div class="glass rounded-xl p-4 mb-3"><div class="grad disp font-extrabold">Gap ${i+1}: ${g.skill}</div>
+              <div class="mt-1">${g.why}</div><div class="mt-2 text-[var(--ink)]">▸ Module: ${g.module}</div>
+              <div class="text-[var(--acc2)]">▸ Proof artifact: ${g.proof}</div></div>`).join('');
+          loadStats();
+        } else { out.innerHTML='<span class="text-red-400">'+(d.error||'Something went wrong.')+'</span>'; }
+      }catch(e){ out.innerHTML='<span class="text-red-400">Network error.</span>'; }
+      go.disabled=false; go.textContent='Find my 3 gaps';
+    }
+  </script>
+</body>
+</html>
