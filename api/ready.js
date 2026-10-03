@@ -5,7 +5,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const GEMINI_MODEL = 'gemini-2.5-flash';
+const GEMINI_MODEL = 'gemini-2.0-flash';
 const MAX_OUTPUT_TOKENS = 350;        // cost cap (upskilling spec)
 const REQUESTS_PER_VISITOR = 3;       // abuse cap (upskilling spec)
 
@@ -78,11 +78,12 @@ export default async function handler(req, res) {
     });
     data = await r.json();
   } catch (e) {
-    return res.status(502).json({ error: 'Model call failed.' });
+    return res.status(502).json({ error: 'Model call failed.' + e.message });
   }
 
   const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
   const usage = data?.usageMetadata || {};
+    if (!data?.candidates) return res.status(200).json({ error: 'Gemini returned no candidates', raw: data });
   let parsed;
   try { parsed = JSON.parse(text); } catch { parsed = { refused: true, reason: 'Could not parse model output.' }; }
 
