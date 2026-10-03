@@ -5,7 +5,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const GEMINI_MODEL = 'gemini-2.0-flash';
+const GEMINI_MODEL = 'gemini-3.8-flash';
 const MAX_OUTPUT_TOKENS = 350;        // cost cap (upskilling spec)
 const REQUESTS_PER_VISITOR = 3;       // abuse cap (upskilling spec)
 
