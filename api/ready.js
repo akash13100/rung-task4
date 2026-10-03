@@ -88,7 +88,7 @@ export default async function handler(req, res) {
   const usage = data?.usageMetadata || {};
     if (!data?.candidates) return res.status(200).json({ error: 'Gemini returned no candidates', raw: data });
   let parsed;
-  try { parsed = JSON.parse(text); } catch { parsed = { refused: true, reason: 'Could not parse model output.' }; }
+  try { parsed = JSON.parse(text); } catch { return res.status(200).json({ error: 'parse_fail', rawText: text }); }
 
   // ---- Store EVERY request+response (anonymised) ----
   await supabase.from('readiness_checks').insert({
